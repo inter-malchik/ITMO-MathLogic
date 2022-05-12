@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <exception>
 #define lmb '\\'
 
 class l_term {
@@ -44,7 +45,32 @@ public:
 
     friend l_term *lapp_leftassociative(l_term *term);
 
+    void alpha_reduction(char newval) {
+        if (gettype() != ASSOC)
+            throw std::logic_error("given term is not associative type");
+        char oldvar = l_val;
+        l_val = newval;
+
+        if (arg1)
+            alpha_reduct(arg1, oldvar, newval);
+        if (arg2)
+            alpha_reduct(arg2, oldvar, newval);
+    }
+
 private:
+    void alpha_reduct(l_term *term, char oldvar, char newval) {
+        if (term->l_val) {
+            if (term->l_val == newval)
+                throw std::logic_error("given reductive value already present in expression");
+            else if (term->l_val == oldvar)
+                term->l_val = newval;
+        }
+        if (term->arg1)
+            alpha_reduct(term->arg1, oldvar, newval);
+        if (term->arg2)
+            alpha_reduct(term->arg2, oldvar, newval);
+    }
+
     enum type l_type;
     char l_val = '\0';
     l_term *arg1 = nullptr; // only used in APP
@@ -76,10 +102,7 @@ l_term *lparse(std::string &expression, size_t i = 0, bool appl = true) {
                 break;
         }
         std::string slice = expression.substr(a + 1, b - a - 1);
-        //if (b+1 < expression.size() - 1)
-            return new l_term(lparse(slice), lparse(expression, b+1, false));
-        //else
-        //    return lparse(slice);
+        return new l_term(lparse(slice), lparse(expression, b + 1, false));
     } else {
         char vr = expression[i];
         if (i < expression.size() - 1) {
@@ -114,7 +137,12 @@ int main() {
     std::string lexp;
     std::cin >> lexp;
     l_term res = *lparse(lexp);
+    std::cout << res << std::endl;
 
-    std::cout << res;
+    char areduction_ask;
+    std::cin >> areduction_ask;
+
+    res.alpha_reduction(areduction_ask);
+    std::cout << res << std::endl;
     return 0;
 }
