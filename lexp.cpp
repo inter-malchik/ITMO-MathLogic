@@ -57,6 +57,18 @@ public:
             alpha_reduct(arg2, oldvar, newval);
     }
 
+    void beta_reduction() {
+        if (gettype() != APP || !arg1 || !arg2 || arg1->l_type != ASSOC || arg2->l_type != SYMBOL)
+            throw std::logic_error("ERROR: given term should be APP with ASSOC on the left and SYMBOL on the right");
+        char oldvar = arg1->l_val, newval = arg2->l_val;
+        if (!oldvar || !newval)
+            throw std::logic_error("VALUE ERROR: can't perform beta-reduction");
+        alpha_reduct(arg1->arg2, oldvar, newval);
+        delete this->arg2;
+        delete this->arg1->arg1;
+        *this = *arg1->arg2;
+    }
+
 private:
     void alpha_reduct(l_term *term, char oldvar, char newval) {
         if (term->l_val) {
@@ -102,7 +114,10 @@ l_term *lparse(std::string &expression, size_t i = 0, bool appl = true) {
                 break;
         }
         std::string slice = expression.substr(a + 1, b - a - 1);
-        return new l_term(lparse(slice), lparse(expression, b + 1, false));
+        if (expression[b+1] != '\0')
+            return new l_term(lparse(slice), lparse(expression, b + 1, false));
+        else
+            return new l_term(*lparse(slice));
     } else {
         char vr = expression[i];
         if (i < expression.size() - 1) {
@@ -127,7 +142,14 @@ std::ostream &operator<<(std::ostream &stream, l_term &term) {
             stream << lmb << term.l_val << '.' << '(' << *term.arg2 << ')';
             break;
         case l_term::APP:
-            stream << '(' << *term.arg1 << *term.arg2 << ')';
+            if (term.arg1 ->l_type == l_term::SYMBOL && term.arg2 ->l_type == l_term::SYMBOL)
+                stream << *term.arg1 << *term.arg2;
+            else if (term.arg1 ->l_type == l_term::SYMBOL && term.arg2 ->l_type != l_term::SYMBOL)
+                stream << *term.arg1 << '(' << *term.arg2 << ')';
+            else if (term.arg1 ->l_type != l_term::SYMBOL && term.arg2 ->l_type == l_term::SYMBOL)
+                stream << '(' << *term.arg1 << ')' << *term.arg2;
+            else
+                stream << '(' << *term.arg1 << ')' << '(' << *term.arg2 << ')';
             break;
     }
     return stream;
@@ -139,10 +161,16 @@ int main() {
     l_term res = *lparse(lexp);
     std::cout << res << std::endl;
 
-    char areduction_ask;
-    std::cin >> areduction_ask;
 
-    res.alpha_reduction(areduction_ask);
+    //alpha
+    //char areduction_ask;
+    //std::cin >> areduction_ask;
+    //res.alpha_reduction(areduction_ask);
+    //std::cout << res << std::endl;
+
+    res.beta_reduction();
     std::cout << res << std::endl;
+
+
     return 0;
 }
